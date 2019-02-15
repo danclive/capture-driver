@@ -16,13 +16,13 @@ func main() {
 }
 
 func run() {
-	event_emiter := queen.NewEventEmiter()
+	q := queen.NewQueen()
 
-	event_emiter.On("run", func(context queen.Context) {
-		event_emiter.Emit("init/driver", nil)
+	q.On("run", func(context queen.Context) {
+		context.Queen.Emit("init/driver", nil)
 	})
 
-	event_emiter.On("init/driver/ack", func(context queen.Context) {
+	q.On("init/driver/ack", func(context queen.Context) {
 		fmt.Printf("event: %s, message: %s\n", context.Event, context.Message)
 
 		message := context.Message.(nson.Message)
@@ -33,7 +33,7 @@ func run() {
 		}
 
 		if driver == "snap7" {
-			context.Event_emiter.Emit("driver/snap7/connect", nson.Message{
+			context.Queen.Emit("driver/snap7/connect", nson.Message{
 				"id":     nson.I32(123),
 				"config": nson.String("S7-TCP://127.0.0.1?rank=0&slot=0&isBIGEndian=true"),
 				"retry":  nson.I32(1),
@@ -43,11 +43,11 @@ func run() {
 		}
 	})
 
-	event_emiter.On("init/driver", func(context queen.Context) {
-		capturedriver.InitDriver(&event_emiter)
+	q.On("init/driver", func(context queen.Context) {
+		capturedriver.InitDriver(context.Queen)
 	})
 
-	event_emiter.On(snap7.CONNECT_ACK, func(context queen.Context) {
+	q.On(snap7.CONNECT_ACK, func(context queen.Context) {
 		fmt.Println(context)
 
 		msg, ok := context.Message.(nson.Message)
@@ -57,11 +57,11 @@ func run() {
 
 		if ok, _ := msg.GetBool("ok"); ok {
 			fmt.Println(msg)
-			read_msg(context.Event_emiter)
+			read_msg(context.Queen)
 		}
 	})
 
-	event_emiter.On(snap7.RECONNECT_ACK, func(context queen.Context) {
+	q.On(snap7.RECONNECT_ACK, func(context queen.Context) {
 		fmt.Println(context)
 
 		msg, ok := context.Message.(nson.Message)
@@ -71,11 +71,11 @@ func run() {
 
 		if ok, _ := msg.GetBool("ok"); ok {
 			fmt.Println(msg)
-			read_msg(context.Event_emiter)
+			read_msg(context.Queen)
 		}
 	})
 
-	event_emiter.On(snap7.READ_ACK, func(context queen.Context) {
+	q.On(snap7.READ_ACK, func(context queen.Context) {
 		fmt.Println(context)
 
 		if msg, ok := context.Message.(nson.Message); ok {
@@ -107,15 +107,15 @@ func run() {
 					msg.Insert("tags", tags2)
 				}
 
-				context.Event_emiter.Emit(snap7.WRITE, msg)
+				context.Queen.Emit(snap7.WRITE, msg)
 			}
 		}
 	})
 
-	event_emiter.Emit("run", nil)
+	q.Emit("run", nil)
 }
 
-func read_msg(event_emiter *queen.EventEmiter) {
+func read_msg(q *queen.Queen) {
 	tags := make(nson.Array, 0)
 
 	tags = append(tags, nson.Message{
@@ -127,7 +127,7 @@ func read_msg(event_emiter *queen.EventEmiter) {
 
 	msg := nson.Message{"id": nson.I32(123), "tags": tags, "tick": nson.I32(2)}
 
-	event_emiter.Emit(snap7.READ, msg)
+	q.Emit(snap7.READ, msg)
 }
 
 // 连接 driver/snap7/connect driver/snap7/connect/ack
