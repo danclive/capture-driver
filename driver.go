@@ -6,7 +6,7 @@ import (
 	queen "github.com/danclive/queen-go"
 )
 
-func InitDriver(event_emiter *queen.EventEmiter) {
-	snap7.InitSnap7(event_emiter)
-	modbus.InitModbus(event_emiter)
+func InitDriver(queen *queen.Queen) {
+	snap7.InitSnap7(queen)
+	modbus.InitModbus(queen)
 }

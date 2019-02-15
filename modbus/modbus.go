@@ -5,8 +5,8 @@ import (
 	queen "github.com/danclive/queen-go"
 )
 
-func InitModbus(event_emiter *queen.EventEmiter) {
+func InitModbus(queen *queen.Queen) {
 	doc := nson.Message{"driver": nson.String("modbus"), "ok": nson.Bool(true)}
 
-	event_emiter.Emit("init/driver/ack", doc)
+	queen.Emit("init/driver/ack", doc)
 }

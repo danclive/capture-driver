@@ -24,17 +24,16 @@ const (
 	CLOSE_ACK     = "driver/snap7/close/ack"
 )
 
-func InitSnap7(event_emiter *queen.EventEmiter) {
-	event_emiter.On(CONNECT, connect)
-	event_emiter.On(READ, read)
-	event_emiter.On(WRITE, write)
-	event_emiter.On(CLOSE, close)
-	event_emiter.On("driver/snap7/status", status)
-
-	event_emiter.On(RECONNECT, reconnect)
+func InitSnap7(queen *queen.Queen) {
+	queen.On(CONNECT, connect)
+	queen.On(RECONNECT, reconnect)
+	queen.On(READ, read)
+	queen.On(WRITE, write)
+	queen.On(CLOSE, close)
+	queen.On("driver/snap7/status", status)
 
 	doc := nson.Message{"driver": nson.String("snap7"), "ok": nson.Bool(true)}
-	event_emiter.Emit("init/driver/ack", doc)
+	queen.Emit("init/driver/ack", doc)
 }
 
 var conns = make(map[int32]*conn_t)
@@ -116,7 +115,7 @@ func connect(context queen.Context) {
 	if !ok {
 		msg.Insert("ok", nson.Bool(false))
 		msg.Insert("error", nson.String("Message format error: message isn't nson!"))
-		context.Event_emiter.Emit(CONNECT_ACK, msg)
+		context.Queen.Emit(CONNECT_ACK, msg)
 		return
 	}
 
@@ -135,7 +134,7 @@ func connect(context queen.Context) {
 
 		config, host, rank, slot, ok := parse_config(&msg)
 		if !ok {
-			context.Event_emiter.Emit(CONNECT_ACK, msg)
+			context.Queen.Emit(CONNECT_ACK, msg)
 			return
 		}
 
@@ -158,7 +157,7 @@ func connect(context queen.Context) {
 			msg.Insert("error", nson.String("Snap7 connect error: "+err.Error()))
 
 			if retry > 0 {
-				context.Event_emiter.Emit(
+				context.Queen.Emit(
 					RECONNECT,
 					nson.Message{"id": nson.I32(id), "retry": nson.I32(retry)})
 			}
@@ -172,14 +171,14 @@ func connect(context queen.Context) {
 		lock.Unlock()
 
 		// msg.Insert("ok", true)
-		// context.Event_emiter.Emit(CONNECT_ACK, msg)
+		// context.Queen.Emit(CONNECT_ACK, msg)
 	} else {
 		msg.Insert("ok", nson.Bool(false))
 		msg.Insert("error", nson.String("Message format error: can't get id!"))
-		// context.Event_emiter.Emit(CONNECT_ACK, msg)
+		// context.Queen.Emit(CONNECT_ACK, msg)
 	}
 
-	context.Event_emiter.Emit(CONNECT_ACK, msg)
+	context.Queen.Emit(CONNECT_ACK, msg)
 }
 
 func reconnect(context queen.Context) {
@@ -187,7 +186,7 @@ func reconnect(context queen.Context) {
 	if !ok {
 		msg.Insert("ok", nson.Bool(false))
 		msg.Insert("error", nson.String("Message format error: message isn't nson!"))
-		context.Event_emiter.Emit(RECONNECT_ACK, msg)
+		context.Queen.Emit(RECONNECT_ACK, msg)
 		return
 	}
 
@@ -195,7 +194,7 @@ func reconnect(context queen.Context) {
 	if err != nil {
 		msg.Insert("ok", nson.Bool(false))
 		msg.Insert("error", nson.String("Message format error: can't get retry!"))
-		context.Event_emiter.Emit(RECONNECT_ACK, msg)
+		context.Queen.Emit(RECONNECT_ACK, msg)
 		return
 	}
 
@@ -210,7 +209,7 @@ func reconnect(context queen.Context) {
 				client, err := snap7.ConnentTo(conn.host, conn.rank, conn.slot)
 				if err != nil {
 
-					context.Event_emiter.Emit(RECONNECT,
+					context.Queen.Emit(RECONNECT,
 						nson.Message{"id": nson.I32(id), "retry": nson.I32(retry)})
 
 					msg.Insert("ok", nson.Bool(false))
@@ -231,7 +230,7 @@ func reconnect(context queen.Context) {
 		msg.Insert("error", nson.String("Message format error: can't get id!"))
 	}
 
-	context.Event_emiter.Emit(RECONNECT_ACK, msg)
+	context.Queen.Emit(RECONNECT_ACK, msg)
 }
 
 func read(context queen.Context) {
@@ -239,7 +238,7 @@ func read(context queen.Context) {
 	if !ok {
 		msg.Insert("ok", nson.Bool(false))
 		msg.Insert("error", nson.String("Message format error: message isn't nson!"))
-		context.Event_emiter.Emit(READ_ACK, msg)
+		context.Queen.Emit(READ_ACK, msg)
 		return
 	}
 
@@ -283,14 +282,14 @@ func read(context queen.Context) {
 				}
 
 				if conn.tick > 0 {
-					go func(id int32, tick int32, event_emit *queen.EventEmiter) {
+					go func(id int32, tick int32, event_emit *queen.Queen) {
 						// 延迟
 						time.Sleep(time.Duration(tick) * time.Millisecond)
 
 						msg2 := nson.Message{"id": nson.I32(id)}
 						event_emit.Emit(READ, msg2)
 
-					}(id, tick, context.Event_emiter)
+					}(id, tick, context.Queen)
 				}
 			}
 
@@ -305,7 +304,7 @@ func read(context queen.Context) {
 		msg.Insert("error", nson.String("Message format error: can't get id!"))
 	}
 
-	context.Event_emiter.Emit(READ_ACK, msg)
+	context.Queen.Emit(READ_ACK, msg)
 }
 
 func write(context queen.Context) {
@@ -313,7 +312,7 @@ func write(context queen.Context) {
 	if !ok {
 		msg.Insert("ok", nson.Bool(false))
 		msg.Insert("error", nson.String("Message format error: message isn't nson!"))
-		context.Event_emiter.Emit(WRITE_ACK, msg)
+		context.Queen.Emit(WRITE_ACK, msg)
 		return
 	}
 
@@ -339,7 +338,7 @@ func write(context queen.Context) {
 		msg.Insert("error", nson.String("Message format error: can't get id!"))
 	}
 
-	context.Event_emiter.Emit(WRITE_ACK, msg)
+	context.Queen.Emit(WRITE_ACK, msg)
 }
 
 func close(context queen.Context) {
@@ -347,7 +346,7 @@ func close(context queen.Context) {
 	if !ok {
 		msg.Insert("ok", nson.Bool(false))
 		msg.Insert("error", nson.String("Message format error: message isn't nson!"))
-		context.Event_emiter.Emit(CLOSE_ACK, msg)
+		context.Queen.Emit(CLOSE_ACK, msg)
 		return
 	}
 
@@ -369,9 +368,9 @@ func close(context queen.Context) {
 		msg.Insert("error", nson.String("Message format error: can't get id!"))
 	}
 
-	context.Event_emiter.Emit(CLOSE_ACK, msg)
+	context.Queen.Emit(CLOSE_ACK, msg)
 }
 
 func status(context queen.Context) {
-	context.Event_emiter.Emit("driver/snap7/status/ack", nson.Message{"ok": nson.Bool(true)})
+	context.Queen.Emit("driver/snap7/status/ack", nson.Message{"ok": nson.Bool(true)})
 }
