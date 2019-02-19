@@ -47,15 +47,15 @@ func write_ext(context queen.Context, msg *nson.Message, conn *conn_t, tags nson
 			}
 		case "SHORT", "WORD":
 			if value, err := tag.GetI32("value"); err == nil {
-				data = util.IntTo2Bytes(int(value))
+				data = util.IntTo2Bytes(int(value), true)
 			}
 		case "LONG", "DWORD":
 			if value, err := tag.GetI32("value"); err == nil {
-				data = util.IntTo4Bytes(int(value))
+				data = util.IntTo4Bytes(int(value), true)
 			}
 		case "FLOAT", "REAL":
 			if value, err := tag.GetF32("value"); err == nil {
-				data = util.Float32To4Bytes(float32(value))
+				data = util.Float32To4Bytes(float32(value), true)
 			}
 		case "BOOL":
 			if value, err := tag.GetBool("value"); err == nil {
@@ -66,6 +66,8 @@ func write_ext(context queen.Context, msg *nson.Message, conn *conn_t, tags nson
 					context.Queen.Emit(
 						RECONNECT,
 						nson.Message{"id": nson.I32(conn.id), "retry": nson.I32(conn.retry)})
+
+					return
 				}
 
 				switch s7addr.Format {
@@ -110,7 +112,10 @@ func write_ext(context queen.Context, msg *nson.Message, conn *conn_t, tags nson
 					nson.Message{"id": nson.I32(conn.id), "retry": nson.I32(conn.retry)})
 			}
 
-			msg.Insert("ok", nson.Bool(true))
+			msg.Insert("ok", nson.Bool(false))
+			return
 		}
 	}
+
+	msg.Insert("ok", nson.Bool(true))
 }

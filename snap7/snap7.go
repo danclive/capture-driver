@@ -11,17 +11,20 @@ import (
 	snap7 "github.com/danclive/snap7-go"
 )
 
-const (
-	CONNECT       = "driver/snap7/connect"
-	CONNECT_ACK   = "driver/snap7/connect/ack"
-	RECONNECT     = "driver/snap7/reconnect"
-	RECONNECT_ACK = "driver/snap7/reconnect/ack"
-	READ          = "driver/snap7/read"
-	READ_ACK      = "driver/snap7/read/ack"
-	WRITE         = "driver/snap7/write"
-	WRITE_ACK     = "driver/snap7/write/ack"
-	CLOSE         = "driver/snap7/close"
-	CLOSE_ACK     = "driver/snap7/close/ack"
+var (
+	PREFIX        = ""
+	CONNECT       = PREFIX + "driver/snap7/connect"
+	CONNECT_ACK   = PREFIX + "driver/snap7/connect/ack"
+	RECONNECT     = PREFIX + "driver/snap7/reconnect"
+	RECONNECT_ACK = PREFIX + "driver/snap7/reconnect/ack"
+	READ          = PREFIX + "driver/snap7/read"
+	READ_ACK      = PREFIX + "driver/snap7/read/ack"
+	WRITE         = PREFIX + "driver/snap7/write"
+	WRITE_ACK     = PREFIX + "driver/snap7/write/ack"
+	CLOSE         = PREFIX + "driver/snap7/close"
+	CLOSE_ACK     = PREFIX + "driver/snap7/close/ack"
+	STATUS        = PREFIX + "driver/snap7/status"
+	STATUS_ACK    = PREFIX + "driver/snap7/status/ack"
 )
 
 func InitSnap7(queen *queen.Queen) {
@@ -30,10 +33,10 @@ func InitSnap7(queen *queen.Queen) {
 	queen.On(READ, read)
 	queen.On(WRITE, write)
 	queen.On(CLOSE, close)
-	queen.On("driver/snap7/status", status)
+	queen.On(STATUS, status)
 
-	doc := nson.Message{"driver": nson.String("snap7"), "ok": nson.Bool(true)}
-	queen.Emit("init/driver/ack", doc)
+	msg := nson.Message{"driver": nson.String("snap7"), "ok": nson.Bool(true)}
+	queen.Emit("init/driver/ack", msg)
 }
 
 var conns = make(map[int32]*conn_t)
@@ -47,7 +50,7 @@ type conn_t struct {
 	slot   int
 	islink bool  // 是否已经连接
 	retry  int32 // 是否重试&重试时间
-	tick   int32 // 读
+	tick   int32 // 读间隔
 	tags   nson.Array
 	client snap7.Snap7Client
 	lock   sync.Mutex
@@ -351,18 +354,21 @@ func close(context queen.Context) {
 	}
 
 	if id, err := msg.GetI32("id"); err == nil {
-		lock.RLock()
+		lock.Lock()
 		if conn, ok := conns[id]; ok {
 			conn.lock.Lock()
 			conn.client.Close()
-			conn.lock.Unlock()
 
 			delete(conns, id)
+			conn.lock.Unlock()
+
+			msg.Insert("ok", nson.Bool(true))
+
 		} else {
 			msg.Insert("ok", nson.Bool(false))
 			msg.Insert("error", nson.String("Message format error: can't get conn!"))
 		}
-		lock.RUnlock()
+		lock.Unlock()
 	} else {
 		msg.Insert("ok", nson.Bool(false))
 		msg.Insert("error", nson.String("Message format error: can't get id!"))
@@ -372,5 +378,5 @@ func close(context queen.Context) {
 }
 
 func status(context queen.Context) {
-	context.Queen.Emit("driver/snap7/status/ack", nson.Message{"ok": nson.Bool(true)})
+	context.Queen.Emit(STATUS_ACK, nson.Message{"ok": nson.Bool(true)})
 }

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/danclive/capture-driver/util"
+
 	nson "github.com/danclive/nson-go"
 	queen "github.com/danclive/queen-go"
 	snap7 "github.com/danclive/snap7-go"
@@ -101,6 +103,12 @@ func read_ext(context queen.Context, msg *nson.Message, conn *conn_t, tags nson.
 		for _, task := range item {
 			bits, err := conn.client.ReadArea(task.area, task.db, task.start, task.end-task.start+1)
 			if err != nil {
+
+				util.ErrorWithFields("read modbus err: ",
+					util.Fields{
+						"err": err,
+					})
+
 				conn.islink = false
 				// 连接断开时，尝试重新连接
 				context.Queen.Emit(
@@ -118,10 +126,10 @@ func read_ext(context queen.Context, msg *nson.Message, conn *conn_t, tags nson.
 	tags_array := make(nson.Array, 0)
 
 	for _, item := range tags2 {
-		//fmt.Println(item)
+
 		bs, ok := convert_raw_to_nson(item)
 		if ok {
-			//fmt.Println(bs)
+
 			tag := nson.Message{
 				"name":    nson.String(item.tag.name),
 				"type":    nson.String(item.tag.ntype),

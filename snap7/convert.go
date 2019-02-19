@@ -29,7 +29,7 @@ func convert_raw_to_nson(tag *tag_t2) (nson.Value, bool) {
 		if len(tag.tag.data) != 2 {
 			log.Error("Convert data SHORT: len(tag.tag.data) != 2 ", tag)
 		} else {
-			i16 := util.BytesToInt16(tag.tag.data)
+			i16 := util.BytesToInt16(tag.tag.data, true)
 
 			return nson.I32(int32(i16)), true
 		}
@@ -37,7 +37,7 @@ func convert_raw_to_nson(tag *tag_t2) (nson.Value, bool) {
 		if len(tag.tag.data) != 2 {
 			log.Error("Convert data WORD: len(tag.tag.data) != 2 ", tag)
 		} else {
-			u16 := util.BytesToUInt16(tag.tag.data)
+			u16 := util.BytesToUInt16(tag.tag.data, true)
 
 			return nson.I32(int32(u16)), true
 		}
@@ -45,7 +45,7 @@ func convert_raw_to_nson(tag *tag_t2) (nson.Value, bool) {
 		if len(tag.tag.data) != 4 {
 			log.Error("Convert data LONG: len(tag.tag.data) != 4 ", tag)
 		} else {
-			i32 := util.BytesToInt32(tag.tag.data)
+			i32 := util.BytesToInt32(tag.tag.data, true)
 
 			return nson.I32(int32(i32)), true
 		}
@@ -53,7 +53,7 @@ func convert_raw_to_nson(tag *tag_t2) (nson.Value, bool) {
 		if len(tag.tag.data) != 4 {
 			log.Error("Convert data DWORD: len(tag.tag.data) != 4 ", tag)
 		} else {
-			u32 := util.BytesToUInt32(tag.tag.data)
+			u32 := util.BytesToUInt32(tag.tag.data, true)
 
 			return nson.I32(int32(u32)), true
 		}
@@ -61,7 +61,7 @@ func convert_raw_to_nson(tag *tag_t2) (nson.Value, bool) {
 		if len(tag.tag.data) != 4 {
 			log.Error("Convert data FLOAT, REAL: len(tag.tag.data) != 4 ", tag)
 		} else {
-			f32 := util.BytesToFloat32(tag.tag.data)
+			f32 := util.BytesToFloat32(tag.tag.data, true)
 
 			return nson.F32(float32(f32)), true
 		}

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/danclive/capture-driver/modbus"
+
 	"github.com/danclive/capture-driver"
 	"github.com/danclive/capture-driver/snap7"
 	nson "github.com/danclive/nson-go"
@@ -33,13 +35,17 @@ func run() {
 		}
 
 		if driver == "snap7" {
-			context.Queen.Emit("driver/snap7/connect", nson.Message{
+			// context.Queen.Emit(snap7.CONNECT, nson.Message{
+			// 	"id":     nson.I32(123),
+			// 	"config": nson.String("S7-TCP://127.0.0.1?rank=0&slot=0&isBIGEndian=true"),
+			// 	"retry":  nson.I32(1),
+			// })
+		} else if driver == "modbus" {
+			context.Queen.Emit(modbus.CONNECT, nson.Message{
 				"id":     nson.I32(123),
-				"config": nson.String("S7-TCP://127.0.0.1?rank=0&slot=0&isBIGEndian=true"),
+				"config": nson.String("TCP:localhost:5020?isBIGEndian=true"),
 				"retry":  nson.I32(1),
 			})
-		} else if driver == "modbus" {
-
 		}
 	})
 
@@ -47,69 +53,100 @@ func run() {
 		capturedriver.InitDriver(context.Queen)
 	})
 
-	q.On(snap7.CONNECT_ACK, func(context queen.Context) {
-		fmt.Println(context)
+	/*
+		q.On(snap7.CONNECT_ACK, func(context queen.Context) {
+			//fmt.Println(context)
 
-		msg, ok := context.Message.(nson.Message)
-		if !ok {
+			msg, ok := context.Message.(nson.Message)
+			if !ok {
 
-		}
+			}
 
-		if ok, _ := msg.GetBool("ok"); ok {
-			fmt.Println(msg)
-			read_msg(context.Queen)
-		}
-	})
-
-	q.On(snap7.RECONNECT_ACK, func(context queen.Context) {
-		fmt.Println(context)
-
-		msg, ok := context.Message.(nson.Message)
-		if !ok {
-
-		}
-
-		if ok, _ := msg.GetBool("ok"); ok {
-			fmt.Println(msg)
-			read_msg(context.Queen)
-		}
-	})
-
-	q.On(snap7.READ_ACK, func(context queen.Context) {
-		fmt.Println(context)
-
-		if msg, ok := context.Message.(nson.Message); ok {
 			if ok, _ := msg.GetBool("ok"); ok {
-				// fmt.Println(msg)
+				fmt.Println(msg)
+				read_msg(context.Queen)
+			}
+		})
 
-				if tags, err := msg.GetArray("tags"); err == nil {
-					tags2 := make(nson.Array, 0)
+		q.On(snap7.RECONNECT_ACK, func(context queen.Context) {
+			fmt.Println(context)
 
-					for _, tag_i := range tags {
-						tag, ok := tag_i.(nson.Message)
-						if !ok {
-							continue
+			msg, ok := context.Message.(nson.Message)
+			if !ok {
+
+			}
+
+			if ok, _ := msg.GetBool("ok"); ok {
+				fmt.Println(msg)
+				read_msg(context.Queen)
+			}
+		})
+
+		q.On(snap7.READ_ACK, func(context queen.Context) {
+			fmt.Println(context)
+
+			if msg, ok := context.Message.(nson.Message); ok {
+				if ok, _ := msg.GetBool("ok"); ok {
+					// fmt.Println(msg)
+
+					if tags, err := msg.GetArray("tags"); err == nil {
+						tags2 := make(nson.Array, 0)
+
+						for _, tag_i := range tags {
+							tag, ok := tag_i.(nson.Message)
+							if !ok {
+								continue
+							}
+
+							value, err := tag.GetI32("value")
+							if err != nil {
+								continue
+							}
+
+							fmt.Println("//////", value)
+							value += 1
+
+							tag.Insert("value", nson.I32(value))
+
+							tags2 = append(tags2, tag)
 						}
 
-						value, err := tag.GetI32("value")
-						if err != nil {
-							continue
-						}
-
-						fmt.Println("//////", value)
-						value += 1
-
-						tag.Insert("value", nson.I32(value))
-
-						tags2 = append(tags2, tag)
+						msg.Insert("tags", tags2)
 					}
 
-					msg.Insert("tags", tags2)
+					context.Queen.Emit(snap7.WRITE, msg)
 				}
-
-				context.Queen.Emit(snap7.WRITE, msg)
 			}
+		})
+	*/
+	q.On(modbus.CONNECT_ACK, func(context queen.Context) {
+		msg, ok := context.Message.(nson.Message)
+		if !ok {
+
 		}
+
+		if ok, _ := msg.GetBool("ok"); ok {
+			fmt.Println(msg)
+			read_msg2(context.Queen)
+		}
+	})
+
+	q.On(modbus.RECONNECT_ACK, func(context queen.Context) {
+		msg, ok := context.Message.(nson.Message)
+		if !ok {
+
+		}
+
+		fmt.Println(msg)
+	})
+
+	q.On(modbus.READ_ACK, func(context queen.Context) {
+		msg, ok := context.Message.(nson.Message)
+		if !ok {
+
+		}
+
+		fmt.Println("read result: ", msg)
 	})
 
 	q.Emit("run", nil)
@@ -128,6 +165,28 @@ func read_msg(q *queen.Queen) {
 	msg := nson.Message{"id": nson.I32(123), "tags": tags, "tick": nson.I32(2)}
 
 	q.Emit(snap7.READ, msg)
+}
+
+func read_msg2(q *queen.Queen) {
+	tags := make(nson.Array, 0)
+
+	tags = append(tags, nson.Message{
+		"name":    nson.String("tag1"),
+		"type":    nson.String("BOOL"),
+		"format":  nson.String("BOOL"),
+		"address": nson.String("42.1"),
+	})
+
+	// tags = append(tags, nson.Message{
+	// 	"name":    nson.String("tag2"),
+	// 	"type":    nson.String("BOOL"),
+	// 	"format":  nson.String("BOOL"),
+	// 	"address": nson.String("01"),
+	// })
+
+	msg := nson.Message{"id": nson.I32(123), "tags": tags, "tick": nson.I32(5000)}
+
+	q.Emit(modbus.READ, msg)
 }
 
 // 连接 driver/snap7/connect driver/snap7/connect/ack
