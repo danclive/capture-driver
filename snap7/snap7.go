@@ -1,6 +1,7 @@
 package snap7
 
 import (
+	"fmt"
 	"net/url"
 	"strconv"
 	"sync"
@@ -39,11 +40,11 @@ func InitSnap7(queen *queen.Queen) {
 	queen.Emit("init/driver/ack", msg)
 }
 
-var conns = make(map[int32]*conn_t)
+var conns = make(map[int64]*conn_t)
 var lock sync.RWMutex
 
 type conn_t struct {
-	id     int32
+	id     int64
 	config string
 	host   string
 	rank   int
@@ -122,7 +123,7 @@ func connect(context queen.Context) {
 		return
 	}
 
-	if id, err := msg.GetI32("id"); err == nil {
+	if id, err := msg.GetI64("id"); err == nil {
 		lock.Lock()
 		conn, ok := conns[id]
 		// lock.Unlock()
@@ -203,7 +204,7 @@ func reconnect(context queen.Context) {
 
 	time.Sleep(time.Duration(retry) * time.Second)
 
-	if id, err := msg.GetI32("id"); err == nil {
+	if id, err := msg.GetI64("id"); err == nil {
 		lock.Lock()
 		conn, ok := conns[id]
 		if ok {
@@ -245,7 +246,7 @@ func read(context queen.Context) {
 		return
 	}
 
-	if id, err := msg.GetI32("id"); err == nil {
+	if id, err := msg.GetI64("id"); err == nil {
 		// 是否是紧急数据
 		urgent, _ := msg.GetBool("urgent")
 
@@ -285,11 +286,11 @@ func read(context queen.Context) {
 				}
 
 				if conn.tick > 0 {
-					go func(id int32, tick int32, event_emit *queen.Queen) {
+					go func(id int64, tick int32, event_emit *queen.Queen) {
 						// 延迟
 						time.Sleep(time.Duration(tick) * time.Millisecond)
 
-						msg2 := nson.Message{"id": nson.I32(id)}
+						msg2 := nson.Message{"id": nson.I64(id)}
 						event_emit.Emit(READ, msg2)
 
 					}(id, tick, context.Queen)
@@ -319,7 +320,7 @@ func write(context queen.Context) {
 		return
 	}
 
-	if id, err := msg.GetI32("id"); err == nil {
+	if id, err := msg.GetI64("id"); err == nil {
 		lock.RLock()
 		if conn, ok := conns[id]; ok {
 			conn.lock.Lock()
@@ -353,8 +354,9 @@ func close(context queen.Context) {
 		return
 	}
 
-	if id, err := msg.GetI32("id"); err == nil {
+	if id, err := msg.GetI64("id"); err == nil {
 		lock.Lock()
+		fmt.Println(conns)
 		if conn, ok := conns[id]; ok {
 			conn.lock.Lock()
 			conn.client.Close()

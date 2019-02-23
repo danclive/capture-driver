@@ -44,17 +44,25 @@ func write_ext(context queen.Context, msg *nson.Message, conn *conn_t, tags nson
 		case "BYTE", "CHAR":
 			if value, err := tag.GetI32("value"); err == nil {
 				data = []byte{uint8(value)}
+			} else if value, err := tag.GetF32("value"); err == nil {
+				data = []byte{uint8(value)}
 			}
 		case "SHORT", "WORD":
 			if value, err := tag.GetI32("value"); err == nil {
+				data = util.IntTo2Bytes(int(value), true)
+			} else if value, err := tag.GetF32("value"); err == nil {
 				data = util.IntTo2Bytes(int(value), true)
 			}
 		case "LONG", "DWORD":
 			if value, err := tag.GetI32("value"); err == nil {
 				data = util.IntTo4Bytes(int(value), true)
+			} else if value, err := tag.GetF32("value"); err == nil {
+				data = util.IntTo4Bytes(int(value), true)
 			}
 		case "FLOAT", "REAL":
-			if value, err := tag.GetF32("value"); err == nil {
+			if value, err := tag.GetI32("value"); err == nil {
+				data = util.Float32To4Bytes(float32(value), true)
+			} else if value, err := tag.GetF32("value"); err == nil {
 				data = util.Float32To4Bytes(float32(value), true)
 			}
 		case "BOOL":
@@ -65,7 +73,7 @@ func write_ext(context queen.Context, msg *nson.Message, conn *conn_t, tags nson
 					// 连接断开时，尝试重新连接
 					context.Queen.Emit(
 						RECONNECT,
-						nson.Message{"id": nson.I32(conn.id), "retry": nson.I32(conn.retry)})
+						nson.Message{"id": nson.I64(conn.id), "retry": nson.I32(conn.retry)})
 
 					return
 				}
@@ -109,10 +117,10 @@ func write_ext(context queen.Context, msg *nson.Message, conn *conn_t, tags nson
 				// 连接断开时，尝试重新连接
 				context.Queen.Emit(
 					RECONNECT,
-					nson.Message{"id": nson.I32(conn.id), "retry": nson.I32(conn.retry)})
+					nson.Message{"id": nson.I64(conn.id), "retry": nson.I32(conn.retry)})
 			}
 
-			msg.Insert("ok", nson.Bool(false))
+			msg.Insert("ok", nson.Bool(true))
 			return
 		}
 	}

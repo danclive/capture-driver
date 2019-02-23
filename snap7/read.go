@@ -104,7 +104,7 @@ func read_ext(context queen.Context, msg *nson.Message, conn *conn_t, tags nson.
 			bits, err := conn.client.ReadArea(task.area, task.db, task.start, task.end-task.start+1)
 			if err != nil {
 
-				util.ErrorWithFields("read modbus err: ",
+				util.ErrorWithFields("read snap7 err: ",
 					util.Fields{
 						"err": err,
 					})
@@ -113,7 +113,7 @@ func read_ext(context queen.Context, msg *nson.Message, conn *conn_t, tags nson.
 				// 连接断开时，尝试重新连接
 				context.Queen.Emit(
 					RECONNECT,
-					nson.Message{"id": nson.I32(conn.id), "retry": nson.I32(conn.retry)})
+					nson.Message{"id": nson.I64(conn.id), "retry": nson.I32(conn.retry)})
 				return
 			}
 

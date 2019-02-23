@@ -69,7 +69,7 @@ func read_ext(context queen.Context, msg *nson.Message, conn *conn_t, tags nson.
 			// 连接断开时，尝试重新连接
 			context.Queen.Emit(
 				RECONNECT,
-				nson.Message{"id": nson.I32(conn.id), "retry": nson.I32(conn.retry)})
+				nson.Message{"id": nson.I64(conn.id), "retry": nson.I32(conn.retry)})
 			return
 		}
 
