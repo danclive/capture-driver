@@ -189,7 +189,7 @@ func connect(context queen.Context) {
 				if retry > 0 {
 					context.Queen.Emit(
 						RECONNECT,
-						nson.Message{"id": nson.I32(id), "retry": nson.I32(retry)})
+						nson.Message{"id": nson.I64(id), "retry": nson.I32(retry)})
 				}
 			} else {
 				conn2.islink = true
@@ -239,7 +239,7 @@ func reconnect(context queen.Context) {
 					err := conn.tcpHandler.Connect()
 					if err != nil {
 						context.Queen.Emit(RECONNECT,
-							nson.Message{"id": nson.I32(id), "retry": nson.I32(retry)})
+							nson.Message{"id": nson.I64(id), "retry": nson.I32(retry)})
 
 						msg.Insert("ok", nson.Bool(false))
 						msg.Insert("error", nson.String("modbus connect error: "+err.Error()))
@@ -251,7 +251,7 @@ func reconnect(context queen.Context) {
 					err := conn.rtuHandler.Connect()
 					if err != nil {
 						context.Queen.Emit(RECONNECT,
-							nson.Message{"id": nson.I32(id), "retry": nson.I32(retry)})
+							nson.Message{"id": nson.I64(id), "retry": nson.I32(retry)})
 
 						msg.Insert("ok", nson.Bool(false))
 						msg.Insert("error", nson.String("modbus connect error: "+err.Error()))
