@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/danclive/capture-driver/modbus"
+	"github.com/danclive/capture-driver/util"
 
 	"github.com/danclive/capture-driver"
 	"github.com/danclive/capture-driver/snap7"
@@ -13,8 +14,10 @@ import (
 )
 
 func main() {
-	run()
-	block()
+	// run()
+	// block()
+	println(util.BytesToFloat32([]byte{0x0, 0x0, 0x68, 0x41}, false))
+	println(util.BytesToFloat32([]byte{0x0D, 0xA3, 0xEA, 0x3D}, false))
 }
 
 func run() {

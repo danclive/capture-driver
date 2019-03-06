@@ -1,6 +1,8 @@
 package modbus
 
 import (
+	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -55,10 +57,9 @@ type conn_t struct {
 	tcpHandler *modbus.TCPClientHandler
 	rtuHandler *modbus.RTUClientHandler
 	lock       sync.Mutex
-	// isBIGEndian bool
 }
 
-func parse_config(msg *nson.Message) (config string, istcp bool, address string, isbig bool, ok bool) {
+func parse_config(msg *nson.Message) (config string, istcp bool, address string, isbig bool, slaveId byte, ok bool) {
 	var err error
 	config, err = msg.GetString("config")
 	if err != nil {
@@ -88,10 +89,29 @@ func parse_config(msg *nson.Message) (config string, istcp bool, address string,
 
 		options := config[i+1:]
 
-		if options == "isBIGEndian=false" {
-			isbig = false
-		} else {
-			isbig = true
+		// if options == "isBIGEndian=false" {
+		// 	isbig = false
+		// } else {
+		// 	isbig = true
+		// }
+		p, err := url.ParseQuery(options)
+		if err != nil {
+			return
+		}
+
+		if is, ok := p["isBIGEndian"]; ok && len(is) == 1 {
+			if is[0] == "true" {
+				isbig = true
+			}
+		}
+
+		if id, ok2 := p["slaveId"]; ok2 && len(id) == 1 {
+			i, err := strconv.Atoi(id[0])
+			if err != nil {
+				return
+			}
+
+			slaveId = byte(i)
 		}
 	}
 
@@ -127,7 +147,7 @@ func connect(context queen.Context) {
 			msg.Insert("cover", nson.String(conn.config))
 		}
 
-		config, istcp, address, isbig, ok := parse_config(&msg)
+		config, istcp, address, isbig, slaveId, ok := parse_config(&msg)
 		if !ok {
 			context.Queen.Emit(CONNECT_ACK, msg)
 			return
@@ -137,6 +157,8 @@ func connect(context queen.Context) {
 
 		if istcp {
 			handler := modbus.NewTCPClientHandler(address)
+
+			handler.SlaveId = slaveId
 
 			conn2 := conn_t{
 				id:         id,
@@ -170,6 +192,8 @@ func connect(context queen.Context) {
 			lock.Unlock()
 		} else {
 			handler := modbus.NewRTUClientHandler(address)
+
+			handler.SlaveId = slaveId
 
 			conn2 := conn_t{
 				id:         id,
