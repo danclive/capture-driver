@@ -48,6 +48,7 @@ type conn_t struct {
 	config     string
 	istcp      bool
 	address    string
+	slaveId    byte
 	isbig      bool
 	islink     bool  // 是否已经连接
 	retry      int32 // 是否重试&重试时间
@@ -159,6 +160,7 @@ func connect(context queen.Context) {
 			handler := modbus.NewTCPClientHandler(address)
 
 			handler.SlaveId = slaveId
+			handler.IdleTimeout = 30
 
 			conn2 := conn_t{
 				id:         id,
@@ -166,6 +168,7 @@ func connect(context queen.Context) {
 				istcp:      istcp,
 				isbig:      isbig,
 				address:    address,
+				slaveId:    slaveId,
 				retry:      retry,
 				tcpHandler: handler,
 			}
@@ -261,6 +264,7 @@ func reconnect(context queen.Context) {
 			if !conn.islink {
 				if conn.istcp {
 					err := conn.tcpHandler.Connect()
+
 					if err != nil {
 						context.Queen.Emit(RECONNECT,
 							nson.Message{"id": nson.I64(id), "retry": nson.I32(retry)})
@@ -268,21 +272,24 @@ func reconnect(context queen.Context) {
 						msg.Insert("ok", nson.Bool(false))
 						msg.Insert("error", nson.String("modbus connect error: "+err.Error()))
 					} else {
+						msg.Insert("ok", nson.Bool(true))
 						conn.client = modbus.NewClient(conn.tcpHandler)
 						conn.islink = true
 					}
 				} else {
-					err := conn.rtuHandler.Connect()
-					if err != nil {
-						context.Queen.Emit(RECONNECT,
-							nson.Message{"id": nson.I64(id), "retry": nson.I32(retry)})
+					/*
+						err := conn.rtuHandler.Connect()
+						if err != nil {
+							context.Queen.Emit(RECONNECT,
+								nson.Message{"id": nson.I64(id), "retry": nson.I32(retry)})
 
-						msg.Insert("ok", nson.Bool(false))
-						msg.Insert("error", nson.String("modbus connect error: "+err.Error()))
-					} else {
-						conn.client = modbus.NewClient(conn.rtuHandler)
-						conn.islink = true
-					}
+							msg.Insert("ok", nson.Bool(false))
+							msg.Insert("error", nson.String("modbus connect error: "+err.Error()))
+						} else {
+							conn.client = modbus.NewClient(conn.rtuHandler)
+							conn.islink = true
+						}
+					*/
 				}
 			}
 
@@ -331,6 +338,7 @@ func read(context queen.Context) {
 					}
 
 					read_ext(context, &msg, conn, tags)
+
 				} else {
 					// 如果没有从传入的msg中获取到tags的话,可能是定时读,先判断是否有tags
 					// 要注意,这里如果tags为空的话,应该传入参数错误,应当终止读取
@@ -341,6 +349,14 @@ func read(context queen.Context) {
 						// msg.Insert("error", "Message format error: can't get tags!")
 					} else {
 						read_ext(context, &msg, conn, conn.tags)
+					}
+				}
+
+				if !conn.islink {
+					if conn.istcp {
+						conn.tcpHandler.Close()
+					} else {
+						conn.rtuHandler.Close()
 					}
 				}
 
