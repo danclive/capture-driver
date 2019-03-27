@@ -1,6 +1,7 @@
 package modbus
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/danclive/capture-driver/util"
@@ -178,9 +179,10 @@ func read_ext(context queen.Context, msg *nson.Message, conn *conn_t, tags nson.
 
 			switch task.area {
 			case "3":
-				bits, err = conn.client.ReadInputRegisters(uint16(task.start), uint16(task.end))
+				bits, err = conn.client.ReadInputRegisters(uint16(task.start), uint16(task.end-task.start))
+				fmt.Println(err)
 			case "4":
-				bits, err = conn.client.ReadHoldingRegisters(uint16(task.start), uint16(task.end))
+				bits, err = conn.client.ReadHoldingRegisters(uint16(task.start), uint16(task.end-task.start))
 			}
 
 			if err != nil {
@@ -199,6 +201,13 @@ func read_ext(context queen.Context, msg *nson.Message, conn *conn_t, tags nson.
 					RECONNECT,
 					nson.Message{"id": nson.I64(conn.id), "retry": nson.I32(conn.retry)})
 				return
+			}
+
+			var bits_len = len(bits)
+			if bits_len >= 4 {
+				if bits[bits_len-1] == 255 && bits[bits_len-2] == 255 {
+					continue
+				}
 			}
 
 			for _, tag := range task.tags {
